@@ -32,10 +32,20 @@ namespace CAULDRON_VK
     class StaticBufferPool
     {
     public:
+        // Enum type to classify the usage of this buffer
+        enum UsageFlagBits
+        {
+            STATIC_BUFFER_USAGE_CPU = 0x00000001,
+            STATIC_BUFFER_USAGE_GPU = 0x00000002
+        };
+        using UsageFlags = uint32_t;
+
         VkResult OnCreate(Device *pDevice, uint32_t totalMemSize, bool bUseVidMem, const char* name);
+        VkResult OnCreateEx(Device* pDevice, uint32_t totalMemSize, UsageFlags usageFlags, const char* name);
         void OnDestroy();
 
-        // Allocates a IB/VB and returns a pointer to fill it + a descriptot
+        // Allocates a IB/VB and returns a pointer to fill it + a descriptor
+        // if there is no sys. memory allocated, return `nullptr` instead
         //
         bool AllocBuffer(uint32_t numbeOfVertices, uint32_t strideInBytes, void **pData, VkDescriptorBufferInfo *pOut);
 
@@ -44,7 +54,7 @@ namespace CAULDRON_VK
         bool AllocBuffer(uint32_t numbeOfIndices, uint32_t strideInBytes, const void *pInitData, VkDescriptorBufferInfo *pOut);
 
         // if using vidmem this kicks the upload from the upload heap to the video mem
-        void UploadData(VkCommandBuffer cmd_buf);
+        void UploadData(VkCommandBuffer cmd_buf, const VkDescriptorBufferInfo* bufferInfo = nullptr);
 
         // if using vidmem frees the upload heap
         void FreeUploadHeap();
@@ -54,21 +64,23 @@ namespace CAULDRON_VK
 
         std::mutex       m_mutex = {};
 
-        bool             m_bUseVidMem = true;
+        //  CPU-only case guarantees that BOTH are false
+        bool             m_bUseVidMem = false;
+        bool             m_bUseStagingMem = false;
 
         char            *m_pData = nullptr;
         uint32_t         m_memOffset = 0;
         uint32_t         m_totalMemSize = 0;
 
-        VkBuffer         m_buffer;
-        VkBuffer         m_bufferVid;
+        VkBuffer         m_buffer = VK_NULL_HANDLE;
+        VkBuffer         m_bufferVid = VK_NULL_HANDLE;
 
 #ifdef USE_VMA
         VmaAllocation    m_bufferAlloc = VK_NULL_HANDLE;
         VmaAllocation    m_bufferAllocVid = VK_NULL_HANDLE;
 #else
-        VkDeviceMemory   m_deviceMemory = VK_NULL_HANDLE;;
-        VkDeviceMemory   m_deviceMemoryVid = VK_NULL_HANDLE;;
+        VkDeviceMemory   m_deviceMemory = VK_NULL_HANDLE;
+        VkDeviceMemory   m_deviceMemoryVid = VK_NULL_HANDLE;
 #endif
     };
 }
