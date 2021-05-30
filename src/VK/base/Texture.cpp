@@ -505,19 +505,19 @@ namespace CAULDRON_VK
 
         //compute pixel size
         //
-        UINT32 bytePP = m_header.bitCount / 8;
+        UINT32 bytesPerPixel = (UINT32)GetPixelByteSize((DXGI_FORMAT)m_header.format); // note that bytesPerPixel in BC formats is treated as bytesPerBlock 
+        UINT32 pixelsPerBlock = 1;
         if ((m_header.format >= DXGI_FORMAT_BC1_TYPELESS) && (m_header.format <= DXGI_FORMAT_BC5_SNORM))
         {
-            bytePP = (UINT32)GetPixelByteSize((DXGI_FORMAT)m_header.format);
+            pixelsPerBlock = 4 * 4; // BC formats have 4*4 pixels per block
         }
-
          
         UINT8* pixels = NULL;
-        UINT64 UplHeapSize = m_header.width * m_header.height * 4;
+        UINT64 UplHeapSize = (m_header.width * m_header.height * bytesPerPixel) / pixelsPerBlock;
         pixels =  uploadHeap.Suballocate(UplHeapSize, 512);
         assert(pixels != NULL);
 
-        CopyMemory( pixels, data, m_header.width * m_header.height * bytePP );
+        CopyMemory( pixels, data, m_header.width * m_header.height * bytesPerPixel);
 
         VkBufferImageCopy region = {};
         region.bufferOffset = 0;
