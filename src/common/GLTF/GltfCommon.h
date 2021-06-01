@@ -66,7 +66,7 @@ struct Light
     float         outerConeCos;
     uint32_t      type;
     float         depthBias;
-    uint32_t      shadowMapIndex = -1;
+    int32_t       shadowMapIndex = -1;
 };
 
 
@@ -85,7 +85,8 @@ struct per_frame
     float     emmisiveFactor;
     float     invScreenResolution[2];
 
-    uint32_t  padding[3];
+    uint32_t  padding[2];
+    int32_t   rsmLightIndex = -1;
     uint32_t  lightCount;
     Light     lights[80];
 };

@@ -54,7 +54,8 @@ struct PerFrame
     float         u_EmissiveFactor;
     vec2          u_invScreenResolution;
 
-    vec3          u_padding;
+    vec2          u_padding;
+    int           u_rsmLightIndex;
     int           u_lightCount;
     Light         u_lights[80];
 };

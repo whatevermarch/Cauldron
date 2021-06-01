@@ -185,30 +185,24 @@ float getSpotAttenuation(vec3 pointToLight, vec3 spotDirection, float outerConeC
     return 0.0;
 }
 
-vec3 applyDirectionalLight(Light light, MaterialInfo materialInfo, vec3 normal, vec3 view)
+vec3 getDirectionalLightFlux(Light light)
 {
-    vec3 pointToLight = light.direction;
-    vec3 shade = getPointShade(pointToLight, materialInfo, normal, view);
-    return light.intensity * light.color * shade;
+    return light.intensity * light.color;
 }
 
-vec3 applyPointLight(Light light, MaterialInfo materialInfo, vec3 normal, vec3 worldPos, vec3 view)
+vec3 getPointLightFlux(Light light, vec3 pointToLight)
 {
-    vec3 pointToLight = light.position - worldPos;
     float distance = length(pointToLight);
     float attenuation = getRangeAttenuation(light.range, distance);
-    vec3 shade = getPointShade(pointToLight, materialInfo, normal, view);
-    return attenuation * light.intensity * light.color * shade;
+    return attenuation * light.intensity * light.color;
 }
 
-vec3 applySpotLight(Light light, MaterialInfo materialInfo, vec3 normal, vec3 worldPos, vec3 view)
+vec3 getSpotLightFlux(Light light, vec3 pointToLight)
 {
-    vec3 pointToLight = light.position - worldPos;
     float distance = length(pointToLight);
     float rangeAttenuation = getRangeAttenuation(light.range, distance);
     float spotAttenuation = getSpotAttenuation(pointToLight, -light.direction, light.outerConeCos, light.innerConeCos);
-    vec3 shade = getPointShade(pointToLight, materialInfo, normal, view);
-    return rangeAttenuation * spotAttenuation * light.intensity * light.color * shade;
+    return rangeAttenuation * spotAttenuation * light.intensity * light.color;
 }
 
 vec3 doPbrLighting(VS2PS Input, PerFrame perFrame, vec3 diffuseColor, vec3 specularColor, float perceptualRoughness)
@@ -261,16 +255,21 @@ vec3 doPbrLighting(VS2PS Input, PerFrame perFrame, vec3 diffuseColor, vec3 specu
 
         if (light.type == LightType_Directional)
         {
-            color += applyDirectionalLight(light, materialInfo, normal, view) * shadowFactor;
+            vec3 pointToLight = light.direction;
+            vec3 shade = getPointShade(pointToLight, materialInfo, normal, view);
+            color += getDirectionalLightFlux(light) * shade * shadowFactor;
         }
         else if (light.type == LightType_Point)
         {
-            color += applyPointLight(light, materialInfo, normal, worldPos, view);
+            vec3 pointToLight = light.position - worldPos;
+            vec3 shade = getPointShade(pointToLight, materialInfo, normal, view);
+            color += getPointLightFlux(light, pointToLight) * shade;
         }
         else if (light.type == LightType_Spot)
         {
-            
-            color += applySpotLight(light, materialInfo, normal, worldPos, view) * shadowFactor;
+            vec3 pointToLight = light.position - worldPos;
+            vec3 shade = getPointShade(pointToLight, materialInfo, normal, view);
+            color += getSpotLightFlux(light, pointToLight) * shade * shadowFactor;
         }
     }
 #endif

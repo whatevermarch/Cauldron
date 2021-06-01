@@ -133,16 +133,11 @@ void main()
     float alphaRoughness = perceptualRoughness * perceptualRoughness;
 
 #ifdef HAS_MOTION_VECTORS_RT
-    Output_motionVect = Input.CurrPosition.xy / Input.CurrPosition.w -
-                        Input.PrevPosition.xy / Input.PrevPosition.w;
-#endif
-
-#ifdef HAS_SPECULAR_ROUGHNESS_RT
-    Output_specularRoughness = vec4(specularColor, alphaRoughness);
-#endif
-
-#ifdef HAS_DIFFUSE_RT
-    Output_diffuseColor = vec4(diffuseColor, 0);
+    if (myPerFrame.u_rsmLightIndex < 0) 
+        Output_motionVect = Input.CurrPosition.xy / Input.CurrPosition.w -
+                            Input.PrevPosition.xy / Input.PrevPosition.w;
+    else
+        Output_motionVect = vec2(0, 0);
 #endif
 
 #ifdef HAS_WORLD_COORD_RT
@@ -150,7 +145,38 @@ void main()
 #endif
 
 #ifdef HAS_NORMALS_RT
-    Output_normal = vec4((getPixelNormal(Input) + 1) / 2, 0);
+    vec3 normal = getPixelNormal(Input);
+    Output_normal = vec4((normal + 1) / 2, 0);
+#endif
+
+#ifdef HAS_SPECULAR_ROUGHNESS_RT
+    Output_specularRoughness = vec4(specularColor, alphaRoughness);
+#endif
+
+#ifdef HAS_DIFFUSE_RT
+    // for screen G-Buffer
+    if (myPerFrame.u_rsmLightIndex < 0)
+        Output_diffuseColor = vec4(diffuseColor, 0);
+
+    // for light RSM => output 'flux' instead
+    else 
+    {
+        vec3 flux = getBaseColor(Input).rgb;
+
+        //  now RSM supports only Directional Light and Spotlight
+        int lightType = myPerFrame.u_lights[myPerFrame.u_rsmLightIndex].type;
+        if (lightType == LightType_Directional)
+        {
+            flux *= getDirectionalLightFlux(myPerFrame.u_lights[myPerFrame.u_rsmLightIndex]);
+        }
+        else if (lightType == LightType_Spot)
+        {
+            vec3 pointToLight = myPerFrame.u_lights[myPerFrame.u_rsmLightIndex].position - Input.WorldPos;
+            flux *= getSpotLightFlux(myPerFrame.u_lights[myPerFrame.u_rsmLightIndex], pointToLight);
+        }
+
+        Output_diffuseColor = vec4(flux, 0);
+    }
 #endif
 
 #ifdef HAS_FORWARD_RT

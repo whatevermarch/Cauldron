@@ -296,6 +296,8 @@ namespace CAULDRON_VK
 
             m_Sharpen.Draw(cmd_buf, NULL, m_SharpenDescriptorSet, (m_Width + 7) / 8, (m_Height + 7) / 8, 1);
 
+            SetPerfMarkerEnd(cmd_buf);
+
             {
                 VkImageMemoryBarrier barrier = {};
                 barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
