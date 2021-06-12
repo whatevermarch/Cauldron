@@ -69,6 +69,7 @@ struct Light
     int32_t       shadowMapIndex = -1;
 };
 
+#define MAX_LIGHT_COUNT 8
 
 const uint32_t LightType_Directional = 0;
 const uint32_t LightType_Point = 1;
@@ -85,10 +86,9 @@ struct per_frame
     float     emmisiveFactor;
     float     invScreenResolution[2];
 
-    uint32_t  padding[2];
-    int32_t   rsmLightIndex = -1;
+    uint32_t  padding[3];
     uint32_t  lightCount;
-    Light     lights[80];
+    Light     lights[MAX_LIGHT_COUNT];
 };
 
 //

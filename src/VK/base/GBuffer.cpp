@@ -63,14 +63,6 @@ namespace CAULDRON_VK
             defines["HAS_FORWARD_RT"] = std::to_string(rtIndex++);
         }
 
-        // Motion Vectors
-        //
-        if (m_flags & GBUFFER_MOTION_VECTORS)
-        {
-            defines["HAS_MOTION_VECTORS"] = std::to_string(1);
-            defines["HAS_MOTION_VECTORS_RT"] = std::to_string(rtIndex++);
-        }
-
         // Normal Buffer
         //
         if (m_flags & GBUFFER_NORMAL_BUFFER)
@@ -98,6 +90,21 @@ namespace CAULDRON_VK
         {
             defines["HAS_SPECULAR_ROUGHNESS_RT"] = std::to_string(rtIndex++);
         }
+
+        // Emissive/Flux
+        //
+        if (m_flags & GBUFFER_EMISSIVE_FLUX)
+        {
+            defines["HAS_EMISSIVE_FLUX_RT"] = std::to_string(rtIndex++);
+        }
+
+        // Motion Vectors
+        //
+        if (m_flags & GBUFFER_MOTION_VECTORS)
+        {
+            defines["HAS_MOTION_VECTORS"] = std::to_string(1);
+            defines["HAS_MOTION_VECTORS_RT"] = std::to_string(rtIndex++);
+        }
     }
 
     VkSampleCountFlagBits GBufferRenderPass::GetSampleCount()
@@ -116,6 +123,15 @@ namespace CAULDRON_VK
         m_pDevice = pDevice;
         m_sampleCount = (VkSampleCountFlagBits)sampleCount;
         m_formats = formats;
+
+        if (m_formats.find(GBUFFER_DEPTH) != m_formats.end())
+        {
+            if (m_formats[GBUFFER_DEPTH] == VK_FORMAT_D16_UNORM_S8_UINT ||
+                m_formats[GBUFFER_DEPTH] == VK_FORMAT_D24_UNORM_S8_UINT ||
+                m_formats[GBUFFER_DEPTH] == VK_FORMAT_D32_SFLOAT_S8_UINT)
+                m_bContainStencil = true;
+        }
+        else m_bContainStencil = false;
     }
 
     void GBuffer::OnDestroy()
@@ -139,12 +155,6 @@ namespace CAULDRON_VK
         {
             addAttachment(m_formats[GBUFFER_FORWARD], m_sampleCount, previousColor, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, &colorAttachments[colorAttanchmentCount++]);
             assert(m_GBufferFlags & GBUFFER_FORWARD); // asserts if there if the RT is not present in the GBuffer
-        }
-
-        if (flags & GBUFFER_MOTION_VECTORS)
-        {
-            addAttachment(m_formats[GBUFFER_MOTION_VECTORS], m_sampleCount, previousColor, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, &colorAttachments[colorAttanchmentCount++]);
-            assert(m_GBufferFlags & GBUFFER_MOTION_VECTORS); // asserts if there if the RT is not present in the GBuffer
         }
 
         if (flags & GBUFFER_NORMAL_BUFFER)
@@ -171,6 +181,18 @@ namespace CAULDRON_VK
             assert(m_GBufferFlags & GBUFFER_SPECULAR_ROUGHNESS); // asserts if there if the RT is not present in the GBuffer
         }
 
+        if (flags & GBUFFER_EMISSIVE_FLUX)
+        {
+            addAttachment(m_formats[GBUFFER_EMISSIVE_FLUX], m_sampleCount, previousColor, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, &colorAttachments[colorAttanchmentCount++]);
+            assert(m_GBufferFlags & GBUFFER_EMISSIVE_FLUX); // asserts if there if the RT is not present in the GBuffer
+        }
+
+        if (flags & GBUFFER_MOTION_VECTORS)
+        {
+            addAttachment(m_formats[GBUFFER_MOTION_VECTORS], m_sampleCount, previousColor, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, &colorAttachments[colorAttanchmentCount++]);
+            assert(m_GBufferFlags & GBUFFER_MOTION_VECTORS); // asserts if there if the RT is not present in the GBuffer
+        }
+
         if (flags & GBUFFER_DEPTH)
         {
             pDepthAttachment = new VkAttachmentDescription[1];
@@ -195,20 +217,6 @@ namespace CAULDRON_VK
         if (flags & GBUFFER_FORWARD)
         {
             pAttachments->push_back(m_HDRSRV);
-
-            if (pClearValues)
-            {
-                VkClearValue cv;
-                cv.color = { 0.0f, 0.0f, 0.0f, 0.0f };
-                pClearValues->push_back(cv);
-            }
-        }
-
-        // Motion Vectors
-        //
-        if (flags & GBUFFER_MOTION_VECTORS)
-        {
-            pAttachments->push_back(m_MotionVectorsSRV);
 
             if (pClearValues)
             {
@@ -274,6 +282,34 @@ namespace CAULDRON_VK
             }
         }
 
+        // Emissive/Flux
+        //
+        if (flags & GBUFFER_EMISSIVE_FLUX)
+        {
+            pAttachments->push_back(m_EmissiveFluxSRV);
+
+            if (pClearValues)
+            {
+                VkClearValue cv;
+                cv.color = { 0.0f, 0.0f, 0.0f, 0.0f };
+                pClearValues->push_back(cv);
+            }
+        }
+
+        // Motion Vectors
+        //
+        if (flags & GBUFFER_MOTION_VECTORS)
+        {
+            pAttachments->push_back(m_MotionVectorsSRV);
+
+            if (pClearValues)
+            {
+                VkClearValue cv;
+                cv.color = { 0.0f, 0.0f, 0.0f, 0.0f };
+                pClearValues->push_back(cv);
+            }
+        }
+
         // Create depth buffer
         //
         if (flags & GBUFFER_DEPTH)
@@ -297,14 +333,6 @@ namespace CAULDRON_VK
         {
             m_HDR.InitRenderTarget(m_pDevice, Width, Height, m_formats[GBUFFER_FORWARD], m_sampleCount, (VkImageUsageFlags)(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT), false, "m_HDR");
             m_HDR.CreateSRV(&m_HDRSRV);
-        }
-
-        // Motion Vectors
-        //
-        if (m_GBufferFlags & GBUFFER_MOTION_VECTORS)
-        {
-            m_MotionVectors.InitRenderTarget(m_pDevice, Width, Height, m_formats[GBUFFER_MOTION_VECTORS], m_sampleCount, (VkImageUsageFlags)(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT), false, "m_MotionVector");
-            m_MotionVectors.CreateSRV(&m_MotionVectorsSRV);
         }
 
         // Normal Buffer
@@ -339,18 +367,49 @@ namespace CAULDRON_VK
             m_SpecularRoughness.CreateSRV(&m_SpecularRoughnessSRV);
         }
 
+        // Emissive/Flux
+        //
+        if (m_GBufferFlags & GBUFFER_EMISSIVE_FLUX)
+        {
+            m_EmissiveFlux.InitRenderTarget(m_pDevice, Width, Height, m_formats[GBUFFER_EMISSIVE_FLUX], m_sampleCount, (VkImageUsageFlags)(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT), false, "m_EmissiveFlux");
+            m_EmissiveFlux.CreateSRV(&m_EmissiveFluxSRV);
+        }
+        
+        // Motion Vectors
+        //
+        if (m_GBufferFlags & GBUFFER_MOTION_VECTORS)
+        {
+            m_MotionVectors.InitRenderTarget(m_pDevice, Width, Height, m_formats[GBUFFER_MOTION_VECTORS], m_sampleCount, (VkImageUsageFlags)(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT), false, "m_MotionVector");
+            m_MotionVectors.CreateSRV(&m_MotionVectorsSRV);
+        }
+
         // Create depth buffer
         //
         if (m_GBufferFlags & GBUFFER_DEPTH)
         {
-            m_DepthBuffer.InitDepthStencil(m_pDevice, Width, Height, m_formats[GBUFFER_DEPTH], m_sampleCount, "DepthBuffer");
+            m_DepthBuffer.InitDepthStencil(m_pDevice, Width, Height, m_formats[GBUFFER_DEPTH], m_sampleCount, "m_DepthBuffer");
             m_DepthBuffer.CreateDSV(&m_DepthBufferDSV);
-            m_DepthBuffer.CreateRTV(&m_DepthBufferSRV);            
+            m_DepthBuffer.CreateSRV(&m_DepthBufferSRV);
+
+            if(m_bContainStencil)
+                m_DepthBuffer.CreateSRV(&m_StencilBufferSRV, -1, true);
         }
     }
 
     void GBuffer::OnDestroyWindowSizeDependentResources()
     {
+        if (m_GBufferFlags & GBUFFER_MOTION_VECTORS)
+        {
+            vkDestroyImageView(m_pDevice->GetDevice(), m_MotionVectorsSRV, nullptr);
+            m_MotionVectors.OnDestroy();
+        }
+
+        if (m_GBufferFlags & GBUFFER_EMISSIVE_FLUX)
+        {
+            vkDestroyImageView(m_pDevice->GetDevice(), m_EmissiveFluxSRV, nullptr);
+            m_EmissiveFlux.OnDestroy();
+        }
+
         if (m_GBufferFlags & GBUFFER_SPECULAR_ROUGHNESS)
         {
             vkDestroyImageView(m_pDevice->GetDevice(), m_SpecularRoughnessSRV, nullptr);
@@ -375,12 +434,6 @@ namespace CAULDRON_VK
             m_NormalBuffer.OnDestroy();
         }
 
-        if (m_GBufferFlags & GBUFFER_MOTION_VECTORS)
-        {
-            vkDestroyImageView(m_pDevice->GetDevice(), m_MotionVectorsSRV, nullptr);
-            m_MotionVectors.OnDestroy();
-        }
-
         if (m_GBufferFlags & GBUFFER_FORWARD)
         {
             vkDestroyImageView(m_pDevice->GetDevice(), m_HDRSRV, nullptr);
@@ -389,6 +442,9 @@ namespace CAULDRON_VK
 
         if (m_GBufferFlags & GBUFFER_DEPTH)
         {
+            if (m_bContainStencil)
+                vkDestroyImageView(m_pDevice->GetDevice(), m_StencilBufferSRV, nullptr);
+
             vkDestroyImageView(m_pDevice->GetDevice(), m_DepthBufferDSV, nullptr);
             vkDestroyImageView(m_pDevice->GetDevice(), m_DepthBufferSRV, nullptr);
             m_DepthBuffer.OnDestroy();

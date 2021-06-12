@@ -48,7 +48,7 @@ namespace CAULDRON_VK
         VkDescriptorSet m_uniformsDescriptorSet = VK_NULL_HANDLE;
         VkDescriptorSetLayout m_uniformsDescriptorSetLayout = VK_NULL_HANDLE;
 
-        void DrawPrimitive(VkCommandBuffer cmd_buf, VkDescriptorBufferInfo perSceneDesc, VkDescriptorBufferInfo perObjectDesc, VkDescriptorBufferInfo *pPerSkeleton);
+        void DrawPrimitive(VkCommandBuffer cmd_buf, VkDescriptorBufferInfo perSceneDesc, VkDescriptorBufferInfo perObjectDesc, VkDescriptorBufferInfo *pPerSkeleton, int rsmLightIndex = -1);
     };
 
     struct PBRMesh
@@ -92,8 +92,8 @@ namespace CAULDRON_VK
         );
 
         void OnDestroy();
-        void BuildBatchLists(std::vector<BatchList> *pSolid, std::vector<BatchList> *pTransparent);
-        void DrawBatchList(VkCommandBuffer commandBuffer, std::vector<BatchList> *pBatchList);
+        void BuildBatchLists(std::vector<BatchList> *pSolid, std::vector<BatchList> *pTransparent, int rsmLightIndex = -1);
+        void DrawBatchList(VkCommandBuffer commandBuffer, std::vector<BatchList> *pBatchList, int rsmLightIndex = -1);
         void OnUpdateWindowSizeDependentResources(VkImageView SSAO);
     private:
         GLTFTexturesAndBuffers *m_pGLTFTexturesAndBuffers;

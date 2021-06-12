@@ -28,6 +28,12 @@
 //--------------------------------------------------------------------------------------
 // Constant buffers
 //--------------------------------------------------------------------------------------
+
+layout (push_constant) uniform pushConstants
+{
+    layout (offset = 0) int rsmLightIndex;
+};
+
 #include "perFrameStruct.h"
 
 layout (std140, binding = ID_PER_FRAME) uniform _PerFrame 
@@ -48,7 +54,10 @@ mat4 GetWorldMatrix()
 
 mat4 GetCameraViewProj()
 {
-    return myPerFrame.u_mCameraCurrViewProj;
+    if (rsmLightIndex < 0)
+        return myPerFrame.u_mCameraCurrViewProj;
+    else
+        return myPerFrame.u_lights[rsmLightIndex].mLightViewProj;
 }
 
 mat4 GetPrevWorldMatrix()

@@ -30,8 +30,8 @@ namespace CAULDRON_VK
         pAttachDesc->samples = sampleCount;
         pAttachDesc->loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         pAttachDesc->storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        pAttachDesc->stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        pAttachDesc->stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        pAttachDesc->stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        pAttachDesc->stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
         pAttachDesc->initialLayout = initialLayout;
         pAttachDesc->finalLayout = finalLayout;
         pAttachDesc->flags = 0;
@@ -45,7 +45,7 @@ namespace CAULDRON_VK
         pAttachDesc->loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         pAttachDesc->storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         pAttachDesc->stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        pAttachDesc->stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        pAttachDesc->stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
         pAttachDesc->initialLayout = initialLayout;
         pAttachDesc->finalLayout = finalLayout;
         pAttachDesc->flags = 0;
@@ -58,8 +58,8 @@ namespace CAULDRON_VK
         pAttachDesc->samples = sampleCount;
         pAttachDesc->loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
         pAttachDesc->storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        pAttachDesc->stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        pAttachDesc->stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        pAttachDesc->stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+        pAttachDesc->stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
         pAttachDesc->initialLayout = initialLayout;
         pAttachDesc->finalLayout = finalLayout;
         pAttachDesc->flags = 0;

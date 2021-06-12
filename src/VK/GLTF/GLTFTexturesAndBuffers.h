@@ -60,6 +60,7 @@ namespace CAULDRON_VK
         VkDescriptorBufferInfo m_perFrameConstants;
 
         bool OnCreate(Device *pDevice, GLTFCommon *pGLTFCommon, UploadHeap* pUploadHeap, StaticBufferPool *pStaticBufferPool, DynamicBufferRing *pDynamicBufferRing);
+        void LoadData(AsyncPool* pAsyncPool = NULL);
         void LoadTextures(AsyncPool *pAsyncPool = NULL);
         void LoadGeometry();
         void OnDestroy();

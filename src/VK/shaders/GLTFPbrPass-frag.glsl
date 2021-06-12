@@ -62,6 +62,10 @@ layout(location = HAS_MOTION_VECTORS_RT) out vec2 Output_motionVect;
     layout (location = HAS_FORWARD_RT) out vec4 Output_finalColor;
 #endif
 
+#ifdef HAS_EMISSIVE_FLUX_RT
+    layout (location = HAS_EMISSIVE_FLUX_RT) out vec4 Output_emissiveColor;
+#endif
+
 #ifdef HAS_SPECULAR_ROUGHNESS_RT
     layout (location = HAS_SPECULAR_ROUGHNESS_RT) out vec4 Output_specularRoughness;
 #endif
@@ -83,6 +87,11 @@ layout(location = HAS_MOTION_VECTORS_RT) out vec2 Output_motionVect;
 // Constant Buffers 
 //
 //--------------------------------------------------------------------------------------
+
+layout (push_constant) uniform pushConstants
+{
+    layout (offset = 0) int rsmLightIndex;
+};
 
 //--------------------------------------------------------------------------------------
 // Per Frame structure, must match the one in GlTFCommon.h
@@ -128,16 +137,9 @@ void main()
     vec3 specularColor;
 	getPBRParams(Input, u_pbrParams, diffuseColor, specularColor, perceptualRoughness, alpha);
 
-    // Roughness is authored as perceptual roughness; as is convention,
-    // convert to material roughness by squaring the perceptual roughness [2].
-    float alphaRoughness = perceptualRoughness * perceptualRoughness;
-
-#ifdef HAS_MOTION_VECTORS_RT
-    if (myPerFrame.u_rsmLightIndex < 0) 
-        Output_motionVect = Input.CurrPosition.xy / Input.CurrPosition.w -
-                            Input.PrevPosition.xy / Input.PrevPosition.w;
-    else
-        Output_motionVect = vec2(0, 0);
+#ifdef HAS_MOTION_VECTORS_RT 
+    Output_motionVect = Input.CurrPosition.xy / Input.CurrPosition.w -
+                        Input.PrevPosition.xy / Input.PrevPosition.w;
 #endif
 
 #ifdef HAS_WORLD_COORD_RT
@@ -146,36 +148,67 @@ void main()
 
 #ifdef HAS_NORMALS_RT
     vec3 normal = getPixelNormal(Input);
-    Output_normal = vec4((normal + 1) / 2, 0);
+
+#if (DEF_doubleSided == 1)
+    vec3 cameraPos;
+    if (rsmLightIndex < 0)
+        cameraPos = myPerFrame.u_CameraPos.xyz;
+    else
+        cameraPos = myPerFrame.u_lights[rsmLightIndex].position;
+
+    if (dot(normal, normalize(cameraPos - Input.WorldPos)) < 0)
+    {
+        normal = -normal;
+    }
+#endif
+
+    // PBR terms for additional (optional) shading
+    float ao = 1.0;
+#ifdef ID_occlusionTexture
+    ao = texture(u_OcclusionSampler, getOcclusionUV(Input)).r;
+#endif
+
+    Output_normal = vec4((normal + 1) / 2, ao);
 #endif
 
 #ifdef HAS_SPECULAR_ROUGHNESS_RT
-    Output_specularRoughness = vec4(specularColor, alphaRoughness);
+    Output_specularRoughness = vec4(specularColor, perceptualRoughness);
 #endif
 
 #ifdef HAS_DIFFUSE_RT
-    // for screen G-Buffer
-    if (myPerFrame.u_rsmLightIndex < 0)
-        Output_diffuseColor = vec4(diffuseColor, 0);
+    Output_diffuseColor = vec4(diffuseColor, 1.0);
+#endif
 
+#ifdef HAS_EMISSIVE_FLUX_RT
+    // for screen G-Buffer => output 'emissive' 
+    if (rsmLightIndex < 0)
+    {
+        vec3 emissive;
+#ifdef ID_emissiveTexture
+        emissive = texture(u_EmissiveSampler, getEmissiveUV(Input)).rgb * u_pbrParams.myPerObject_u_EmissiveFactor.rgb * myPerFrame.u_EmissiveFactor;
+#else
+        emissive = u_pbrParams.myPerObject_u_EmissiveFactor.rgb * myPerFrame.u_EmissiveFactor;
+#endif
+        Output_emissiveColor = vec4(emissive, alpha);
+    }
     // for light RSM => output 'flux' instead
     else 
     {
-        vec3 flux = getBaseColor(Input).rgb;
+        vec3 flux = getBaseColor(Input, u_pbrParams).rgb;
 
         //  now RSM supports only Directional Light and Spotlight
-        int lightType = myPerFrame.u_lights[myPerFrame.u_rsmLightIndex].type;
+        int lightType = myPerFrame.u_lights[rsmLightIndex].type;
         if (lightType == LightType_Directional)
         {
-            flux *= getDirectionalLightFlux(myPerFrame.u_lights[myPerFrame.u_rsmLightIndex]);
+            flux *= getDirectionalLightFlux(myPerFrame.u_lights[rsmLightIndex]);
         }
         else if (lightType == LightType_Spot)
         {
-            vec3 pointToLight = myPerFrame.u_lights[myPerFrame.u_rsmLightIndex].position - Input.WorldPos;
-            flux *= getSpotLightFlux(myPerFrame.u_lights[myPerFrame.u_rsmLightIndex], pointToLight);
+            vec3 pointToLight = myPerFrame.u_lights[rsmLightIndex].position - Input.WorldPos;
+            flux *= getSpotLightFlux(myPerFrame.u_lights[rsmLightIndex], pointToLight);
         }
 
-        Output_diffuseColor = vec4(flux, 0);
+        Output_emissiveColor = vec4(flux, alpha);
     }
 #endif
 

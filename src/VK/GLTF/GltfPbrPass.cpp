@@ -415,6 +415,13 @@ namespace CAULDRON_VK
             m_pDynamicBufferRing->SetDescriptorSet(2, (uint32_t)inverseMatrixBufferSize, pPrimitive->m_uniformsDescriptorSet);
         }
 
+        // Define push constants
+        //
+        VkPushConstantRange pushConstant;
+        pushConstant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        pushConstant.offset = 0; // must be multiple of 4
+        pushConstant.size = 4; // must be multiple of 4
+
         // Create the pipeline layout
         //
         std::vector<VkDescriptorSetLayout> descriptorSetLayout = { pPrimitive->m_uniformsDescriptorSetLayout };
@@ -424,8 +431,8 @@ namespace CAULDRON_VK
         VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = {};
         pPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         pPipelineLayoutCreateInfo.pNext = NULL;
-        pPipelineLayoutCreateInfo.pushConstantRangeCount = 0;
-        pPipelineLayoutCreateInfo.pPushConstantRanges = NULL;
+        pPipelineLayoutCreateInfo.pushConstantRangeCount = 1;
+        pPipelineLayoutCreateInfo.pPushConstantRanges = &pushConstant;
         pPipelineLayoutCreateInfo.setLayoutCount = (uint32_t)descriptorSetLayout.size();
         pPipelineLayoutCreateInfo.pSetLayouts = descriptorSetLayout.data();
 
@@ -564,6 +571,19 @@ namespace CAULDRON_VK
             att_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
             att_states.push_back(att_state);
         }
+        if (defines.Has("HAS_EMISSIVE_FLUX_RT"))
+        {
+            VkPipelineColorBlendAttachmentState att_state = {};
+            att_state.colorWriteMask = 0xf;
+            att_state.blendEnable = VK_FALSE;
+            att_state.alphaBlendOp = VK_BLEND_OP_ADD;
+            att_state.colorBlendOp = VK_BLEND_OP_ADD;
+            att_state.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+            att_state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+            att_state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+            att_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+            att_states.push_back(att_state);
+        }
         if (defines.Has("HAS_MOTION_VECTORS_RT"))
         {
             VkPipelineColorBlendAttachmentState att_state = {};
@@ -595,7 +615,8 @@ namespace CAULDRON_VK
 
         std::vector<VkDynamicState> dynamicStateEnables = {
             VK_DYNAMIC_STATE_VIEWPORT,
-            VK_DYNAMIC_STATE_SCISSOR
+            VK_DYNAMIC_STATE_SCISSOR,
+            VK_DYNAMIC_STATE_STENCIL_REFERENCE // adjust ref val per obj type (opaque/trans)
         };
         VkPipelineDynamicStateCreateInfo dynamicState = {};
         dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
@@ -620,20 +641,20 @@ namespace CAULDRON_VK
         ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
         ds.pNext = NULL;
         ds.flags = 0;
-        ds.depthTestEnable = true;
-        ds.depthWriteEnable = true;
+        ds.depthTestEnable = VK_TRUE;
+        ds.depthWriteEnable = VK_TRUE;
         ds.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
         ds.back.failOp = VK_STENCIL_OP_KEEP;
-        ds.back.passOp = VK_STENCIL_OP_KEEP;
-        ds.back.compareOp = VK_COMPARE_OP_ALWAYS;
-        ds.back.compareMask = 0;
-        ds.back.reference = 0;
         ds.back.depthFailOp = VK_STENCIL_OP_KEEP;
-        ds.back.writeMask = 0;
+        ds.back.passOp = VK_STENCIL_OP_REPLACE;
+        ds.back.compareOp = VK_COMPARE_OP_ALWAYS;
+        ds.back.compareMask = 0xff;
+        ds.back.reference = 1; // set to 0 for transparent objects (via dyn. state)
+        ds.back.writeMask = 0xff;
         ds.depthBoundsTestEnable = VK_FALSE;
         ds.minDepthBounds = 0;
         ds.maxDepthBounds = 0;
-        ds.stencilTestEnable = VK_FALSE;
+        ds.stencilTestEnable = VK_TRUE;
         ds.front = ds.back;
 
         // multi sample state
@@ -682,7 +703,7 @@ namespace CAULDRON_VK
     // BuildLists
     //
     //--------------------------------------------------------------------------------------
-    void GltfPbrPass::BuildBatchLists(std::vector<BatchList> *pSolid, std::vector<BatchList> *pTransparent)
+    void GltfPbrPass::BuildBatchLists(std::vector<BatchList> *pSolid, std::vector<BatchList> *pTransparent, int rsmLightIndex)
     {
         // loop through nodes
         //
@@ -698,7 +719,9 @@ namespace CAULDRON_VK
             // skinning matrices constant buffer
             VkDescriptorBufferInfo *pPerSkeleton = m_pGLTFTexturesAndBuffers->GetSkinningMatricesBuffer(pNode->skinIndex);
 
-            XMMATRIX mModelViewProj = pNodesMatrices[i].GetCurrent() * m_pGLTFTexturesAndBuffers->m_pGLTFCommon->m_perFrameData.mCameraCurrViewProj;
+            XMMATRIX mModelViewProj = pNodesMatrices[i].GetCurrent() * 
+                (rsmLightIndex < 0 ? m_pGLTFTexturesAndBuffers->m_pGLTFCommon->m_perFrameData.mCameraCurrViewProj :
+                    m_pGLTFTexturesAndBuffers->m_pGLTFCommon->m_perFrameData.lights[rsmLightIndex].mLightViewProj);
 
             // loop through primitives
             //
@@ -710,13 +733,18 @@ namespace CAULDRON_VK
                 if (pPrimitive->m_pipeline == VK_NULL_HANDLE)
                     continue;
 
+                PBRMaterialParameters* pPbrParams = &pPrimitive->m_pMaterial->m_pbrMaterialParameters;
+                
+                std::vector<BatchList>* pBatchList = (pPbrParams->m_blending) ? pTransparent : pSolid;
+
+                if (pBatchList == NULL)
+                    continue;
+
                 // do frustrum culling
                 //
                 tfPrimitives boundingBox = m_pGLTFTexturesAndBuffers->m_pGLTFCommon->m_meshes[pNode->meshIndex].m_pPrimitives[p];
                 if (CameraFrustumToBoxCollision(mModelViewProj, boundingBox.m_center, boundingBox.m_radius))
                     continue;
-
-                PBRMaterialParameters *pPbrParams = &pPrimitive->m_pMaterial->m_pbrMaterialParameters;
 
                 // Set per Object constants from material
                 //
@@ -741,31 +769,24 @@ namespace CAULDRON_VK
 
                 // append primitive to list 
                 //
-                if (pPbrParams->m_blending == false)
-                {
-                    pSolid->push_back(t);
-                }
-                else
-                {
-                    pTransparent->push_back(t);
-                }
+                pBatchList->push_back(t);
             }
         }
     }
 
-    void GltfPbrPass::DrawBatchList(VkCommandBuffer commandBuffer, std::vector<BatchList> *pBatchList)
+    void GltfPbrPass::DrawBatchList(VkCommandBuffer commandBuffer, std::vector<BatchList> *pBatchList, int rsmLightIndex)
     {
         SetPerfMarkerBegin(commandBuffer, "gltfPBR");
         
         for (auto &t : *pBatchList)
         {
-            t.m_pPrimitive->DrawPrimitive(commandBuffer, t.m_perFrameDesc, t.m_perObjectDesc, t.m_pPerSkeleton);
+            t.m_pPrimitive->DrawPrimitive(commandBuffer, t.m_perFrameDesc, t.m_perObjectDesc, t.m_pPerSkeleton, rsmLightIndex);
         }
 
         SetPerfMarkerEnd(commandBuffer);
     }
 
-    void PBRPrimitives::DrawPrimitive(VkCommandBuffer cmd_buf, VkDescriptorBufferInfo perFrameDesc, VkDescriptorBufferInfo perObjectDesc, VkDescriptorBufferInfo *pPerSkeleton)
+    void PBRPrimitives::DrawPrimitive(VkCommandBuffer cmd_buf, VkDescriptorBufferInfo perFrameDesc, VkDescriptorBufferInfo perObjectDesc, VkDescriptorBufferInfo *pPerSkeleton, int rsmLightIndex)
     {
         // Bind indices and vertices using the right offsets into the buffer
         //
@@ -789,6 +810,10 @@ namespace CAULDRON_VK
         // Bind Pipeline
         //
         vkCmdBindPipeline(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+
+        // Push constants
+        //
+        vkCmdPushConstants(cmd_buf, m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4, &rsmLightIndex);
 
         // Draw
         //

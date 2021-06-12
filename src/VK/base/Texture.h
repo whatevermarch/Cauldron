@@ -38,15 +38,22 @@ namespace CAULDRON_VK
 
         // load file into heap
         INT32 Init(Device *pDevice, VkImageCreateInfo *pCreateInfo, char *name = NULL);
-        INT32 InitRenderTarget(Device *pDevice, uint32_t width, uint32_t height, VkFormat format, VkSampleCountFlagBits msaa, VkImageUsageFlags usage, bool bUAV, char *name = NULL);
-        INT32 InitDepthStencil(Device *pDevice, uint32_t width, uint32_t height, VkFormat format, VkSampleCountFlagBits msaa, char *name = NULL);
+        // setup as color/input attachment, sampled image, and transfer source as a basis
+        INT32 InitRenderTarget(Device *pDevice, uint32_t width, uint32_t height, VkFormat format, VkSampleCountFlagBits msaa, VkImageUsageFlags additionalUsages, bool bUAV, char *name = NULL);
+        INT32 InitRenderTarget(Device *pDevice, uint32_t width, uint32_t height, VkFormat format, VkSampleCountFlagBits msaa, char *name = NULL)
+        { return InitRenderTarget(pDevice, width, height, format, msaa, 0, false, name); }
+        // setup as depth(+stencil)/input attachment, sampled image, and transfer source as a basis
+        INT32 InitDepthStencil(Device *pDevice, uint32_t width, uint32_t height, VkFormat format, VkSampleCountFlagBits msaa, VkImageUsageFlags additionalUsages, char *name = NULL);
+        INT32 InitDepthStencil(Device *pDevice, uint32_t width, uint32_t height, VkFormat format, VkSampleCountFlagBits msaa, char *name = NULL)
+        { return InitDepthStencil(pDevice, width, height, format, msaa, 0, name); }
+        
         bool InitFromFile(Device* pDevice, UploadHeap* pUploadHeap, const char *szFilename, bool useSRGB = false, VkImageUsageFlags usageFlags = 0, float cutOff = 1.0f);
         bool InitFromData(Device* pDevice, UploadHeap& uploadHeap, const IMG_INFO& header, const void* data, const char* name = nullptr);
 
         VkImage Resource() const { return m_pResource; }
 
         void CreateRTV(VkImageView *pRV, int mipLevel = -1);
-        void CreateSRV(VkImageView *pImageView, int mipLevel = -1);
+        void CreateSRV(VkImageView *pImageView, int mipLevel = -1, bool bStencilView = false);
         void CreateDSV(VkImageView *pView);
         void CreateCubeSRV(VkImageView *pImageView);
 

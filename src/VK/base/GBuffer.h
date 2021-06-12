@@ -17,7 +17,8 @@ namespace CAULDRON_VK
         GBUFFER_NORMAL_BUFFER = 8,
         GBUFFER_DIFFUSE = 16,
         GBUFFER_SPECULAR_ROUGHNESS = 32,
-        GBUFFER_WORLD_COORD = 64
+        GBUFFER_WORLD_COORD = 64,
+        GBUFFER_EMISSIVE_FLUX = 128
     } GBufferFlagBits;
 
     typedef uint32_t GBufferFlags;
@@ -66,6 +67,7 @@ namespace CAULDRON_VK
         Texture                         m_DepthBuffer;
         VkImageView                     m_DepthBufferDSV;
         VkImageView                     m_DepthBufferSRV;
+        VkImageView                     m_StencilBufferSRV;
 
         // difuse
         Texture                         m_Diffuse;
@@ -87,6 +89,10 @@ namespace CAULDRON_VK
         Texture                         m_WorldCoord;
         VkImageView                     m_WorldCoordSRV;
 
+        // emissive/flux
+        Texture                         m_EmissiveFlux;
+        VkImageView                     m_EmissiveFluxSRV;
+
         // HDR
         Texture                         m_HDR;
         VkImageView                     m_HDRSRV;
@@ -100,6 +106,7 @@ namespace CAULDRON_VK
         std::vector<VkClearValue>       m_clearValues;
 
         std::map<GBufferFlags, VkFormat> m_formats;
+        bool                            m_bContainStencil;
     };
 
 }

@@ -38,6 +38,12 @@ namespace CAULDRON_VK
         return true;
     }
 
+    void GLTFTexturesAndBuffers::LoadData(AsyncPool* pAsyncPool)
+    {
+        LoadGeometry();
+        LoadTextures(pAsyncPool);
+    }
+
     void GLTFTexturesAndBuffers::LoadTextures(AsyncPool *pAsyncPool)
     {
         // load textures and create views
@@ -70,7 +76,7 @@ namespace CAULDRON_VK
                 });
             }
 
-            LoadGeometry();
+            //LoadGeometry();
 
             if (pAsyncPool)
                 pAsyncPool->Flush();
