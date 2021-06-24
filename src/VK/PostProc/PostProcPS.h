@@ -21,6 +21,7 @@
 #include "Base/StaticBufferPool.h"
 #include "Base/DynamicBufferRing.h"
 #include "Base/ResourceViewHeaps.h"
+#include "Base/ShaderCompilerHelper.h"
 
 namespace CAULDRON_VK
 {
@@ -37,7 +38,8 @@ namespace CAULDRON_VK
             DynamicBufferRing *pDynamicBufferRing,
             VkDescriptorSetLayout descriptorSetLayout,
             VkPipelineColorBlendStateCreateInfo *pBlendDesc = NULL,
-            VkSampleCountFlagBits sampleDescCount = VK_SAMPLE_COUNT_1_BIT
+            VkSampleCountFlagBits sampleDescCount = VK_SAMPLE_COUNT_1_BIT,
+            DefineList* pUserDefines = nullptr
         );
         void OnDestroy();
         void UpdatePipeline(VkRenderPass renderPass, VkPipelineColorBlendStateCreateInfo *pBlendDesc = NULL, VkSampleCountFlagBits sampleDescCount = VK_SAMPLE_COUNT_1_BIT);

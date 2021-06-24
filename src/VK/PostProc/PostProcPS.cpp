@@ -46,7 +46,8 @@ namespace CAULDRON_VK
         DynamicBufferRing *pDynamicBufferRing,
         VkDescriptorSetLayout descriptorSetLayout,
         VkPipelineColorBlendStateCreateInfo *pBlendDesc,
-        VkSampleCountFlagBits sampleDescCount
+        VkSampleCountFlagBits sampleDescCount,
+        DefineList* pUserDefines
     )
     {
         m_pDevice = pDevice;
@@ -78,6 +79,8 @@ namespace CAULDRON_VK
         // Compile shaders
         //
         DefineList attributeDefines;
+        if (pUserDefines != nullptr)
+            attributeDefines = *pUserDefines;
 
         VkPipelineShaderStageCreateInfo m_vertexShader;
         res = VKCompileFromString(m_pDevice->GetDevice(), SST_GLSL, VK_SHADER_STAGE_VERTEX_BIT, vertexShader, "main", "", &attributeDefines, &m_vertexShader);

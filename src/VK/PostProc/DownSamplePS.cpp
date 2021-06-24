@@ -43,7 +43,20 @@ namespace CAULDRON_VK
         m_pStaticBufferPool = pStaticBufferPool;
         m_pResourceViewHeaps = pResourceViewHeaps;
         m_pConstantBufferRing = pConstantBufferRing;
-        m_outFormat = outFormat;
+
+        DefineList defines;
+        if (outFormat == VK_FORMAT_D32_SFLOAT || outFormat == VK_FORMAT_D16_UNORM_S8_UINT ||
+            outFormat == VK_FORMAT_D24_UNORM_S8_UINT || outFormat == VK_FORMAT_D32_SFLOAT_S8_UINT)
+        {
+            m_outFormat = VK_FORMAT_R32_SFLOAT;
+            defines["HAS_DEPTH_RT"] = std::to_string(1);
+            m_bAsDepth = true;
+        }
+        else
+        {
+            m_outFormat = outFormat;
+            m_bAsDepth = false;
+        }
 
         // Create Descriptor Set Layout, the shader needs a uniform dynamic buffer and a texture + sampler
         // The Descriptor Sets will be created and initialized once we know the input to the shader, that happens in OnCreateWindowSizeDependentResources()
@@ -73,7 +86,14 @@ namespace CAULDRON_VK
 
         // In Render pass
         //
-        m_in = SimpleColorWriteRenderPass(pDevice->GetDevice(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        VkAttachmentDescription att_desc{};
+        AttachNoClearBeforeUse(
+            m_outFormat,
+            (VkSampleCountFlagBits)1,
+            VK_IMAGE_LAYOUT_UNDEFINED,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            &att_desc);
+        m_in = CreateRenderPassOptimal(pDevice->GetDevice(), 1, &att_desc, NULL);
 
         // The sampler we want to use for downsampling, all linear
         //
@@ -95,7 +115,7 @@ namespace CAULDRON_VK
 
         // Use helper class to create the fullscreen pass
         //
-        m_downscale.OnCreate(pDevice, m_in, "DownSamplePS.glsl", "main", "", pStaticBufferPool, pConstantBufferRing, m_descriptorSetLayout);
+        m_downscale.OnCreate(pDevice, m_in, "DownSamplePS.glsl", "main", "", pStaticBufferPool, pConstantBufferRing, m_descriptorSetLayout, NULL, (VkSampleCountFlagBits)1, &defines);
 
         // Allocate descriptors for the mip chain
         //
@@ -148,7 +168,10 @@ namespace CAULDRON_VK
 
             // Create and initialize the Descriptor Sets (all of them use the same Descriptor Layout)        
             m_pConstantBufferRing->SetDescriptorSet(0, sizeof(DownSamplePS::cbDownscale), m_mip[i].descriptorSet);
-            SetDescriptorSet(m_pDevice->GetDevice(), 1, m_mip[i].m_SRV, &m_sampler, m_mip[i].descriptorSet);
+            if (i == 0 && m_bAsDepth)
+                SetDescriptorSetForDepth(m_pDevice->GetDevice(), 1, m_mip[i].m_SRV, &m_sampler, m_mip[i].descriptorSet);
+            else
+                SetDescriptorSet(m_pDevice->GetDevice(), 1, m_mip[i].m_SRV, &m_sampler, m_mip[i].descriptorSet);
 
             // destination -----------
             //

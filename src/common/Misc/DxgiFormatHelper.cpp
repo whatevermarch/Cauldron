@@ -177,6 +177,7 @@ size_t BitsPerPixel(DXGI_FORMAT fmt)
         return 1;
 
     default:
+        assert(0);
         return 0;
     }
 }
@@ -226,6 +227,7 @@ size_t GetPixelByteSize(DXGI_FORMAT fmt)
     case(DXGI_FORMAT_BC4_SNORM):
     case(DXGI_FORMAT_R16G16B16A16_FLOAT):
     case(DXGI_FORMAT_R16G16B16A16_TYPELESS):
+    case(DXGI_FORMAT_R32G32_FLOAT):
         return 8;
 
     case(DXGI_FORMAT_BC2_TYPELESS):

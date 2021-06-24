@@ -67,6 +67,7 @@ namespace CAULDRON_VK
         uint32_t                     m_Width;
         uint32_t                     m_Height;
         int                          m_mipCount;
+        bool                         m_bAsDepth;
 
         VkDescriptorSetLayout        m_descriptorSetLayout;
 

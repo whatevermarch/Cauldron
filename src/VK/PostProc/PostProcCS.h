@@ -33,7 +33,7 @@ namespace CAULDRON_VK
             const std::string &shaderCompilerParams,
             VkDescriptorSetLayout descriptorSetLayout,
             uint32_t dwWidth, uint32_t dwHeight, uint32_t dwDepth,
-            DefineList* userDefines = 0
+            DefineList* pUserDefines = nullptr
         );
         void OnDestroy();
         void Draw(VkCommandBuffer cmd_buf, VkDescriptorBufferInfo *pConstantBuffer, VkDescriptorSet descSet, uint32_t dispatchX, uint32_t dispatchY, uint32_t dispatchZ);

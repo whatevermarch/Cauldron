@@ -36,7 +36,11 @@ layout (std140, binding = 0) uniform perFrame
 //--------------------------------------------------------------------------------------
 layout (location = 0) in vec2 inTexCoord;
 
+#ifdef HAS_DEPTH_RT
+layout (location = 0) out float outColor;
+#else
 layout (location = 0) out vec4 outColor;
+#endif
 
 //--------------------------------------------------------------------------------------
 // Texture definitions
@@ -56,19 +60,30 @@ vec2 offsets[9] = {
 void main()
 {
     // gaussian like downsampling
-
+#ifdef HAS_DEPTH_RT
+    float color = 0.0f;
+#else
     vec4 color = vec4(0,0,0,0);
+#endif
 
     if (myPerFrame.u_mipLevel==0)
     {
         for(int i=0;i<9;i++)
+#ifdef HAS_DEPTH_RT
+            color += log(max(0.01f+texture(inputSampler, inTexCoord + (2 * myPerFrame.u_invSize * offsets[i]) ).r, 0.01f ));
+#else
             color += log(max(.01+texture(inputSampler, inTexCoord + (2 * myPerFrame.u_invSize * offsets[i]) ), vec4(0.01, 0.01, 0.01, 0.01) ));
+#endif       
         outColor = exp(color / 9.0f);
     }
     else
     {
         for(int i=0;i<9;i++)
+#ifdef HAS_DEPTH_RT
+            color += texture(inputSampler, inTexCoord + (2 * myPerFrame.u_invSize * offsets[i]) ).r;
+#else        
             color += texture(inputSampler, inTexCoord + (2 * myPerFrame.u_invSize * offsets[i]) );
+#endif 
         outColor = color / 9.0f;
     }
 }

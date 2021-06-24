@@ -212,7 +212,7 @@ namespace CAULDRON_VK
         std::lock_guard<std::mutex> lock(m_mutex);
 
         uint32_t size = AlignUp(numbeOfElements* strideInBytes, 256u);
-        if (m_memOffset + size >= m_totalMemSize)
+        if (m_memOffset + size > m_totalMemSize)
             return false;
 
         if (!m_bUseVidMem || m_bUseStagingMem) // there is sys. mem allocated
