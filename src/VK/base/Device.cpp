@@ -260,7 +260,14 @@ namespace CAULDRON_VK
         }
         if (compute_queue_family_index != UINT32_MAX)
         {
-            vkGetDeviceQueue(m_device, compute_queue_family_index, 0, &compute_queue);
+            if (graphics_queue_family_index == compute_queue_family_index)
+            {
+                compute_queue = graphics_queue;
+            }
+            else
+            {
+                vkGetDeviceQueue(m_device, compute_queue_family_index, 0, &compute_queue);
+            }
         }
 
         // Init the extensions (if they have been enabled successfuly)

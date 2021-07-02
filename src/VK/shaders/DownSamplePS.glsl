@@ -69,11 +69,22 @@ void main()
     if (myPerFrame.u_mipLevel==0)
     {
         for(int i=0;i<9;i++)
+        {
 #ifdef HAS_DEPTH_RT
-            color += log(max(0.01f+texture(inputSampler, inTexCoord + (2 * myPerFrame.u_invSize * offsets[i]) ).r, 0.01f ));
+            //  workaround : only sample the first RSM
+            vec2 samplingCoord = inTexCoord + (2 * myPerFrame.u_invSize * offsets[i]);
+#ifdef IS_RSM
+            samplingCoord /= 2;
+            if (samplingCoord.x >= 0.5f)
+                samplingCoord.x = 0.5f - myPerFrame.u_invSize.x;
+            if (samplingCoord.y >= 0.5f)
+                samplingCoord.y = 0.5f - myPerFrame.u_invSize.y;
+#endif
+            color += log(max(0.01f+texture(inputSampler, samplingCoord).r, 0.01f ));
 #else
             color += log(max(.01+texture(inputSampler, inTexCoord + (2 * myPerFrame.u_invSize * offsets[i]) ), vec4(0.01, 0.01, 0.01, 0.01) ));
-#endif       
+#endif
+        }
         outColor = exp(color / 9.0f);
     }
     else

@@ -36,7 +36,7 @@ namespace CAULDRON_VK
         ResourceViewHeaps *pResourceViewHeaps,
         DynamicBufferRing *pConstantBufferRing,
         StaticBufferPool *pStaticBufferPool,
-        VkFormat outFormat
+        VkFormat outFormat, bool bIsRSM
     )
     {
         m_pDevice = pDevice;
@@ -50,6 +50,8 @@ namespace CAULDRON_VK
         {
             m_outFormat = VK_FORMAT_R32_SFLOAT;
             defines["HAS_DEPTH_RT"] = std::to_string(1);
+            if (bIsRSM) // workaround : only sample the first quarter
+                defines["IS_RSM"] = std::to_string(1);
             m_bAsDepth = true;
         }
         else

@@ -27,7 +27,7 @@ namespace CAULDRON_VK
     class DownSamplePS
     {
     public:
-        void OnCreate(Device* pDevice, ResourceViewHeaps *pResourceViewHeaps, DynamicBufferRing *m_pConstantBufferRing, StaticBufferPool *pStaticBufferPool, VkFormat outFormat);
+        void OnCreate(Device* pDevice, ResourceViewHeaps *pResourceViewHeaps, DynamicBufferRing *m_pConstantBufferRing, StaticBufferPool *pStaticBufferPool, VkFormat outFormat, bool bIsRSM = false);
         void OnDestroy();
 
         void OnCreateWindowSizeDependentResources(uint32_t Width, uint32_t Height, Texture *pInput, int mips);
