@@ -71,14 +71,15 @@ void main()
         for(int i=0;i<9;i++)
         {
 #ifdef HAS_DEPTH_RT
-            //  workaround : only sample the first RSM
             vec2 samplingCoord = inTexCoord + (2 * myPerFrame.u_invSize * offsets[i]);
 #ifdef IS_RSM
+            //  workaround : only sample the first RSM
             samplingCoord /= 2;
-            if (samplingCoord.x >= 0.5f)
-                samplingCoord.x = 0.5f - myPerFrame.u_invSize.x;
-            if (samplingCoord.y >= 0.5f)
-                samplingCoord.y = 0.5f - myPerFrame.u_invSize.y;
+            vec2 bound = 0.5f - myPerFrame.u_invSize / 2;
+            if (samplingCoord.x >= bound.x)
+                samplingCoord.x = bound.x;
+            if (samplingCoord.y >= bound.y)
+                samplingCoord.y = bound.y;
 #endif
             color += log(max(0.01f+texture(inputSampler, samplingCoord).r, 0.01f ));
 #else
